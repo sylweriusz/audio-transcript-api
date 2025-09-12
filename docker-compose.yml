@@ -1,0 +1,67 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: whisper-redis
+    ports:
+      - "6379:6379"  # Inny port żeby nie kolidował
+    command: redis-server --maxmemory 1gb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  whisper-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.whisper
+    image: whisper-stt-turbo-api:latest  # Osobna nazwa obrazu
+    container_name: whisper-api
+    ports:
+      - "8000:8000"  # Inny port żeby nie kolidował
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - WHISPER_MODEL=turbo
+      - MAX_FILE_SIZE=524288000 # 500MB
+      - CLEANUP_HOURS=24 # Usuń pliki po 24h
+      - RESULTS_TTL=86400 # Redis TTL: 24h
+    volumes:
+      - ./audio_temp:/app/audio_temp
+      - ./results:/app/results
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  whisper-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.whisper
+    image: whisper-stt-turbo-api:latest  # Ta sama nazwa co api
+    container_name: whisper-worker
+    command: python3 worker.py
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - WHISPER_MODEL=turbo
+      - CLEANUP_HOURS=24
+      - SPEED_MULTIPLIER=24.0
+    volumes:
+      - ./audio_temp:/app/audio_temp
+      - ./results:/app/results
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  redis_data:  # Osobny volume
