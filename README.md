@@ -76,17 +76,35 @@ curl http://localhost:8000/calibration
 
 ## Configuration
 
-### Environment Variables
+### Environment Variables (.env)
 
-```yaml
-# docker-compose.yml
-environment:
-  - WHISPER_MODEL=turbo         # tiny, base, small, medium, large-v3, turbo
-  - MAX_FILE_SIZE=524288000     # 500MB limit
-  - CLEANUP_HOURS=24            # Auto-delete after 24h
-  - RESULTS_TTL=86400           # Redis TTL: 24h
-  - SPEED_MULTIPLIER=24.0       # Performance baseline (Turbo optimized)
+Environment variables are defined in a `.env` file at the project root. Docker Compose automatically loads these variables and applies default values if they are not set.
+
+Example `.env`:
+```env
+WHISPER_MODEL=turbo         # tiny, base, small, medium, large-v3, turbo
+MAX_FILE_SIZE=524288000     # 500MB limit
+CLEANUP_HOURS=24            # Auto-delete after 24h
+RESULTS_TTL=86400           # Redis TTL: 24h
+SPEED_MULTIPLIER=24.0       # Performance baseline (Turbo optimized)
+WHISPER_API_PORT=8000       # External port for whisper-api service
 ```
+
+In `docker-compose.yml`, variables are used like this:
+```yaml
+environment:
+    - WHISPER_MODEL=${WHISPER_MODEL:-turbo}
+    - MAX_FILE_SIZE=${MAX_FILE_SIZE:-524288000}
+    - CLEANUP_HOURS=${CLEANUP_HOURS:-24}
+    - RESULTS_TTL=${RESULTS_TTL:-86400}
+    - SPEED_MULTIPLIER=${SPEED_MULTIPLIER:-24.0}
+ports:
+    - "${WHISPER_API_PORT:-8000}:8000"
+```
+
+**Notes:**
+- If the `.env` file does not exist, Docker Compose will use the default values.
+- To change the external port for the whisper-api service, simply set `WHISPER_API_PORT` in your `.env` file.
 
 ### Whisper Models
 
