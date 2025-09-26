@@ -1,2 +1,4 @@
 .github/
 .env
+results/
+audio_temp/
