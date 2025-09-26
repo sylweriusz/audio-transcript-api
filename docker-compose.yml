@@ -2,9 +2,9 @@ services:
   redis:
     image: redis:7-alpine
     container_name: whisper-redis
-    ports:
-      - "6379:6379"  # Inny port żeby nie kolidował
     command: redis-server --maxmemory 1gb --maxmemory-policy allkeys-lru
+    expose:
+      - "6379"
     volumes:
       - redis_data:/data
     restart: unless-stopped
@@ -13,16 +13,16 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.whisper
-    image: whisper-stt-turbo-api:latest  # Osobna nazwa obrazu
+    image: whisper-stt-turbo-api:latest  # Separate image name
     container_name: whisper-api
     ports:
-      - "8000:8000"  # Inny port żeby nie kolidował
+      - "${WHISPER_API_PORT:-8000}:8000"  # Different port to avoid conflicts
     environment:
       - REDIS_URL=redis://redis:6379
-      - WHISPER_MODEL=turbo
-      - MAX_FILE_SIZE=524288000 # 500MB
-      - CLEANUP_HOURS=24 # Usuń pliki po 24h
-      - RESULTS_TTL=86400 # Redis TTL: 24h
+      - WHISPER_MODEL=${WHISPER_MODEL:-turbo}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-524288000}
+      - CLEANUP_HOURS=${CLEANUP_HOURS:-24}
+      - RESULTS_TTL=${RESULTS_TTL:-86400}
     volumes:
       - ./audio_temp:/app/audio_temp
       - ./results:/app/results
@@ -46,9 +46,9 @@ services:
     command: python3 worker.py
     environment:
       - REDIS_URL=redis://redis:6379
-      - WHISPER_MODEL=turbo
-      - CLEANUP_HOURS=24
-      - SPEED_MULTIPLIER=24.0
+      - WHISPER_MODEL=${WHISPER_MODEL:-turbo}
+      - CLEANUP_HOURS=${CLEANUP_HOURS:-24}
+      - SPEED_MULTIPLIER=${SPEED_MULTIPLIER:-24.0}
     volumes:
       - ./audio_temp:/app/audio_temp
       - ./results:/app/results
